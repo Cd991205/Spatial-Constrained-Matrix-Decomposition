@@ -1,0 +1,86 @@
+---
+title: "SVD"
+author: "Chengyu Du"
+date: "2023-11-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=FALSE}
+library(Rcpp)
+library(RcppArmadillo)
+library(hdf5r)
+library(tidyverse)
+library(Seurat)
+library(Matrix)
+library(scales)
+library(cowplot)
+library(RCurl)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(zeallot)
+library(magick)
+library(imager)
+library(dbscan)
+library(Seurat)
+library(Matrix)
+library(data.table)
+library(alphahull)
+library(sf)
+```
+
+
+
+```{r}
+
+# Load the data
+adata <- Read10X_h5("/Users/duchengyu/Desktop/SpaGCN/tutorial/data/151673/expression_matrix.h5")
+
+# Create Seurat object
+adata <- CreateSeuratObject(counts = adata)
+
+# Load spatial data
+spatial <- read.csv("/Users/duchengyu/Desktop/SpaGCN/tutorial/data/151673/positions.txt", header = FALSE, sep = ",", row.names = 1)
+
+# Add spatial data to Seurat object
+adata[["x1"]] <- spatial[[1]]
+adata[["x2"]] <- spatial[[2]]
+adata[["x3"]] <- spatial[[3]]
+adata[["x4"]] <- spatial[[4]]
+adata[["x5"]] <- spatial[[5]]
+adata[["x_array"]] <- spatial[[2]]
+adata[["y_array"]] <- spatial[[3]]
+adata[["x_pixel"]] <- spatial[[4]]
+adata[["y_pixel"]] <- spatial[[5]]
+
+# Select captured samples
+adata <- subset(adata, subset = x1 == 1)
+
+# Convert gene names to uppercase
+rownames(adata) <- toupper(rownames(adata))
+
+
+```
+
+```{r}
+# Access the raw counts matrix
+raw_counts_matrix <- adata@assays$RNA@counts
+
+# If you have normalized or transformed the data, access the data matrix
+data_matrix <- as.matrix(adata@assays$RNA@data)
+
+```
+
+```{r}
+data_matrix=t(data_matrix)
+```
+
+```{r}
+reslut <- svd(data_matrix)
+```
+
