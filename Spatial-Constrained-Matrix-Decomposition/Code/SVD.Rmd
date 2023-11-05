@@ -13,6 +13,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 library(Rcpp)
 library(RcppArmadillo)
+```
+
+```{r}
+Rcpp::sourceCpp('/Users/duchengyu/Documents/GitHub/Spatial-Constrained-Matrix-Decomposition/Code/svd.cpp')
+```
+
+```{r}
+# Example usage in R:
+X <- matrix(rnorm(100), 100, 10)
+U <- matrix(rnorm(100), 100, 10)
+Sigma <- diag(rnorm(10))
+V <- matrix(rnorm(100), 10, 10)
+D <- matrix(replace(diag(10), TRUE, 1), 10, 100)
+result <- gradient_descent_svd(X, U, Sigma, V, D, lambda = 0.1, alpha = 0.001, tol = 1e-4, max_iter = 1000)
+U_updated <- result$U
+Sigma_updated <- result$Sigma
+V_updated <- result$V
+```
+
+
+
+```{r include=FALSE}
 library(hdf5r)
 library(tidyverse)
 library(Seurat)
@@ -22,21 +44,11 @@ library(cowplot)
 library(RCurl)
 library(ggplot2)
 library(dplyr)
-library(magrittr)
-library(zeallot)
-library(magick)
-library(imager)
-library(dbscan)
-library(Seurat)
-library(Matrix)
-library(data.table)
-library(alphahull)
-library(sf)
 ```
 
 
 
-```{r}
+```{r include=FALSE}
 
 # Load the data
 adata <- Read10X_h5("/Users/duchengyu/Desktop/SpaGCN/tutorial/data/151673/expression_matrix.h5")
@@ -70,17 +82,59 @@ rownames(adata) <- toupper(rownames(adata))
 ```{r}
 # Access the raw counts matrix
 raw_counts_matrix <- adata@assays$RNA@counts
+```
 
+
+```{r}
 # If you have normalized or transformed the data, access the data matrix
-data_matrix <- as.matrix(adata@assays$RNA@data)
+X <- t(adata@assays$RNA@data)
+```
+
+```{r include=FALSE}
+result <- mySVD(X,10)
+```
+
+```{r}
+U <- result$U  
+s <- result$s  
+V <- result$V  
+```
+
+
+```{r}
+X_matrix <- as.matrix(X)
+```
+
+```{r}
+s = as.vector(s)
+```
+
+```{r}
+Sigma <- diag(s)
+```
+
+```{r}
+
+D <- matrix(0, nrow = 10, ncol = 3639)
+
+w <- runif(3639)  
+
+D <- matrix(w, nrow = 10, ncol = 3639, byrow = TRUE)  
 
 ```
 
 ```{r}
-data_matrix=t(data_matrix)
+calculate_regularization(X_matrix,V,D)
 ```
 
+
 ```{r}
-reslut <- svd(data_matrix)
+Opti_result <- gradient_descent_svd(X_matrix, U, Sigma, V, D, lambda = 0.1, alpha = 0.001, tol = 1e-4, max_iter = 1000)
 ```
+
+
+
+
+
+
 
