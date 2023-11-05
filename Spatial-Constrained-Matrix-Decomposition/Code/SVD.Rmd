@@ -21,12 +21,13 @@ Rcpp::sourceCpp('/Users/duchengyu/Documents/GitHub/Spatial-Constrained-Matrix-De
 
 ```{r}
 # Example usage in R:
+set.seed(432)
 X <- matrix(rnorm(100), 100, 10)
 U <- matrix(rnorm(100), 100, 10)
 Sigma <- diag(rnorm(10))
 V <- matrix(rnorm(100), 10, 10)
 D <- matrix(replace(diag(10), TRUE, 1), 10, 100)
-result <- gradient_descent_svd(X, U, Sigma, V, D, lambda = 0.1, alpha = 0.001, tol = 1e-4, max_iter = 1000)
+result <- gradient_descent_svd(X, U, Sigma, V, D, lambda = 1, alpha = 1e-6, tol = 1e-10, max_iter = 1000)
 U_updated <- result$U
 Sigma_updated <- result$Sigma
 V_updated <- result$V
@@ -117,9 +118,15 @@ Sigma <- diag(s)
 
 D <- matrix(0, nrow = 10, ncol = 3639)
 
-w <- runif(3639)  
 
-D <- matrix(w, nrow = 10, ncol = 3639, byrow = TRUE)  
+for (i in 1:10) {
+  D[i, i] <- 1
+  if (i == 3639) {
+    D[i, 1] <- -1
+  } else {
+    D[i, i + 1] <- -1
+  }
+}
 
 ```
 
@@ -129,7 +136,24 @@ calculate_regularization(X_matrix,V,D)
 
 
 ```{r}
-Opti_result <- gradient_descent_svd(X_matrix, U, Sigma, V, D, lambda = 0.1, alpha = 0.001, tol = 1e-4, max_iter = 1000)
+Fn <- norm(X - U %*% Sigma %*% t(V), type = "F")
+```
+
+```{r}
+Fn
+```
+
+```{r}
+c <- solve(Sigma)
+```
+
+
+
+
+```{r}
+Opti_result <- gradient_descent_svd(X_matrix, U, Sigma, V, D, lambda = 0.001, alpha = 1e-10, tol = 1e-4, max_iter = 100)
+U_updated <- Opti_result$U
+V_updated <- Opti_result$V
 ```
 
 

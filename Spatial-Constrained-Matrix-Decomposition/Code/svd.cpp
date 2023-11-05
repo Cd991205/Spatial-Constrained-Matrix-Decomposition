@@ -30,29 +30,43 @@ double calculate_regularization(const arma::mat& X, const arma::mat& V, const ar
 }
 
 
-// Gradient Descent Algorithm for Matrix Factorization with Regularization
 // [[Rcpp::export]]
 Rcpp::List gradient_descent_svd(const arma::mat& X, arma::mat U, arma::mat Sigma, arma::mat V, 
                                 const arma::mat& D, double lambda, double alpha, double tol, int max_iter) {
-  arma::mat I_U = arma::eye<arma::mat>(U.n_rows, U.n_rows);
-  arma::mat I_V = arma::eye<arma::mat>(V.n_cols, V.n_cols);
+  // Pre-compute constant terms
+  arma::mat DX = D * X;  // X-transpose times D-transpose times D times X
+  arma::mat Sigma_inv = arma::diagmat(1 / Sigma.diag());
+  
+  // Calculate initial objective function value
   double f = arma::norm(X - U * Sigma * V.t(), "fro") + lambda * calculate_regularization(X, V, D);
   
+  int print_interval = max_iter / 100; // Print progress information 100 times
   for (int iter = 0; iter < max_iter; ++iter) {
-    // Compute the gradients based on provided derivatives
-    arma::mat grad_U = -2 * Sigma * V.t() * X.t() + 2 * Sigma * V.t() * V * Sigma.t() * U.t();
-    arma::mat grad_V = -2 * Sigma.t() * U.t() * X + 2 * Sigma.t() * U.t() * U * Sigma * V.t() + 2 * lambda * V.t() * X.t() * D.t() * D * X;
     
-    // Transpose gradients to match dimensions of U and V
-    grad_U = grad_U.t();
-    grad_V = grad_V.t();
+    // Compute the gradient for V
+    arma::mat grad_V = -2 * Sigma.t() * U.t() * X + 2 * Sigma.t() * U.t() * U * Sigma * V.t() + 2 * lambda * V.t() * DX.t()*DX;
+    grad_V = grad_V.t(); // Transpose gradient to match dimensions of V
     
-    // Update the matrices U and V
-    U -= alpha * grad_U;
+    // Update the matrix V
     V -= alpha * grad_V;
+    
+    // Update the matrix U using the new V
+    U = X * V * Sigma_inv; // Reusing pre-computed Sigma_inv
     
     // Compute the new objective function value
     double f_new = arma::norm(X - U * Sigma * V.t(), "fro") + lambda * calculate_regularization(X, V, D);
+    
+    // Check for NaN in the objective function value
+    if (!arma::is_finite(f_new)) {
+      Rcpp::Rcout << "Non-finite value encountered at iteration " << iter << std::endl;
+      break; // Exit the loop if a non-finite value is encountered
+    }
+    
+    // Check if new objective function value is greater than the previous one
+    if (f_new >= f) {
+      Rcpp::Rcout << "Objective function increased at iteration " << iter << std::endl;
+      break; // Exit the loop if the new value is not smaller than the old one
+    }
     
     // Check for convergence
     if (std::abs(f_new - f) < tol) {
@@ -60,7 +74,13 @@ Rcpp::List gradient_descent_svd(const arma::mat& X, arma::mat U, arma::mat Sigma
       break;
     }
     
-    f = f_new; // Update the objective function value
+    // Optionally print the progress
+    if (iter % print_interval == 0) {
+      Rcpp::Rcout << "Iteration " << iter << " Objective Function: " << f_new << std::endl;
+    }
+    
+    // Update the objective function value only if the new one is smaller
+    f = f_new;
   }
   
   return Rcpp::List::create(Rcpp::Named("U") = U,
